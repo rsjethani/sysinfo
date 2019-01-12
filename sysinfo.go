@@ -2,6 +2,7 @@ package sysinfo
 
 import (
 	"fmt"
+	"os"
 	"os/user"
 	"path/filepath"
 	"plugin"
@@ -17,8 +18,12 @@ func initPlugin(category string, name string) (InfoProvider, error) {
 		return nil, fmt.Errorf("Error while locating plugins: %v", err)
 	}
 
-	pluginBinary := fmt.Sprintf("sysinfo-%v-%v", category, name)
-	pluginPath := filepath.Join(u.HomeDir, pluginDir, pluginBinary)
+	pluginFile := fmt.Sprintf("sysinfo-%v-%v", category, name)
+	pluginPath := filepath.Join(u.HomeDir, pluginDir, pluginFile)
+	if _, e := os.Stat(pluginPath); os.IsNotExist(e) || os.IsPermission(e) {
+		return nil, fmt.Errorf("The plugin file '%v' either does not exists (not implemented?) or we do not have read permission on it", pluginPath)
+	}
+
 	pluginHandle, err := plugin.Open(pluginPath)
 	if err != nil {
 		return nil, fmt.Errorf("Error while loading plugin binary '%v': %v", pluginPath, err)
