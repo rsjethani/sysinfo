@@ -64,16 +64,8 @@ func initPlugin(category string, name string) (interfaces.InfoProvider, error) {
 
 }
 
-func HwInfo(name string) (interfaces.InfoProvider, error) {
-	provider, err := initPlugin("hardware", name)
-	if err != nil {
-		return nil, fmt.Errorf("Cannot get information about '%v': %v", name, err)
-	}
-	return provider, nil
-}
-
-func SwInfo(name string) (interfaces.InfoProvider, error) {
-	provider, err := initPlugin("software", name)
+func GetInfo(category string, name string) (interfaces.InfoProvider, error) {
+	provider, err := initPlugin(category, name)
 	if err != nil {
 		return nil, fmt.Errorf("Cannot get information about '%v': %v", name, err)
 	}

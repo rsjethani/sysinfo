@@ -2,6 +2,7 @@ package builtins
 
 import (
 	csv "encoding/csv"
+	"fmt"
 	"os"
 	"strings"
 
@@ -12,19 +13,26 @@ import (
 type battery struct {
 	devType     string
 	category    string
-	atttributes *map[string]interface{}
+	atttributes []*map[string]interface{}
 }
 
 func (b *battery) Category() string {
 	return b.category
 }
 
-func (b *battery) Attribute(attr string) (interface{}, bool) {
-	val, ok := (*b.atttributes)[attr]
-	return val, ok
+func (b *battery) Attribute(index uint, attr string) (interface{}, error) {
+	count := uint(len(b.atttributes))
+	if index >= count {
+		return nil, fmt.Errorf("Error while locating index. Given index ('%v') exceeds total no. of available objects ('%v')", index, count)
+	}
+	val, ok := (*b.atttributes[index])[attr]
+	if !ok {
+		return nil, fmt.Errorf("Attribute '%v' not found", attr)
+	}
+	return val, nil
 }
 
-func (b *battery) Attributes() *map[string]interface{} {
+func (b *battery) Attributes() []*map[string]interface{} {
 	return b.atttributes
 }
 
@@ -33,8 +41,7 @@ func (b *battery) Type() string {
 }
 
 func BatteryInit() (interfaces.InfoProvider, error) {
-	items := make(map[string]interface{})
-	b := battery{devType: "battery", category: "hardware", atttributes: &items}
+	b := battery{devType: "battery", category: "hardware"}
 
 	f, err := os.Open("/sys/class/power_supply/BAT0/uevent")
 	defer f.Close()
@@ -48,9 +55,10 @@ func BatteryInit() (interfaces.InfoProvider, error) {
 	if err != nil {
 		return nil, err
 	}
+	m := make(map[string]interface{})
 	for _, rec := range records {
-		items[strings.Split(rec[0], "POWER_SUPPLY_")[1]] = rec[1]
+		m[strings.Split(rec[0], "POWER_SUPPLY_")[1]] = rec[1]
 	}
-	b.atttributes = &items
+	b.atttributes = append(b.atttributes, &m)
 	return &b, nil
 }
