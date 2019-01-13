@@ -1,56 +1,56 @@
 package builtins
 
-import "github.com/rsjethani/sysinfo/interfaces"
+import (
+	csv "encoding/csv"
+	"os"
+	"strings"
+
+	"github.com/rsjethani/sysinfo/interfaces"
+)
 
 // battery represents the information about the system battery
 type battery struct {
-	initialized bool
-	category    string
 	devType     string
+	category    string
 	atttributes *map[string]interface{}
-	// Name             string
-	// Status           string
-	// Present          string
-	// Technology       string
-	// CycleCount       string
-	// VoltageMinDesign uint
-	// VoltageNow       uint
-	// PowerNow         uint
-	// EnergyFullDesign uint
-	// EnergyFull       uint
-	// EnergyNow        uint
-	// Capacity         uint
-	// CapacityLevel    string
-	// ModelName        string
-	// Manufacturer     string
-	// SerialNumber     string
 }
 
-func (*battery) Type() string {
-	return "battery"
+func (b *battery) Category() string {
+	return b.category
 }
 
-func (*battery) Category() string {
-	return "hardware"
-}
-
-func (b *battery) Attribute(attr string) (interface{}, error) {
-	return (*b.atttributes)[attr], nil
+func (b *battery) Attribute(attr string) (interface{}, bool) {
+	val, ok := (*b.atttributes)[attr]
+	return val, ok
 }
 
 func (b *battery) Attributes() *map[string]interface{} {
 	return b.atttributes
 }
 
-func (b *battery) String() string {
-	return "To be implemented"
+func (b *battery) Type() string {
+	return b.devType
 }
 
 func BatteryInit() (interfaces.InfoProvider, error) {
-	b := battery{}
-	b.initialized = true
-	x := make(map[string]interface{})
-	b.atttributes = &x
-	(*b.atttributes)["name"] = "sfsfsdf"
+	items := make(map[string]interface{})
+	b := battery{devType: "battery", category: "hardware", atttributes: &items}
+
+	f, err := os.Open("/sys/class/power_supply/BAT0/uevent")
+	defer f.Close()
+	if err != nil {
+		return nil, err
+	}
+
+	r := csv.NewReader(f)
+	r.Comma = 61 //ASCII value of "="
+	records, err := r.ReadAll()
+	if err != nil {
+		return nil, err
+	}
+	for _, rec := range records {
+		items[strings.Split(rec[0], "POWER_SUPPLY_")[1]] = rec[1]
+	}
+	b.atttributes = &items
 	return &b, nil
 }
