@@ -70,6 +70,8 @@ func BatteryInit() (interfaces.InfoProvider, error) {
 			// Error means the value is alphanumeric value like model no., mannufacturer etc., keep these as strings
 			if err != nil {
 				m[key] = rec[1]
+			} else {
+				m[key] = uint(m[key].(uint64))
 			}
 		}
 
