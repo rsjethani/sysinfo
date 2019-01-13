@@ -1,10 +1,8 @@
-package  interfaces
+package interfaces
 
 type InfoProvider interface {
 	Type() string
-	String() string
 	Category() string
 	Attributes() *map[string]interface{}
-	Attribute(string) (interface{}, error)
+	Attribute(string) (interface{}, bool)
 }
-
