@@ -6,13 +6,16 @@ import (
 	"os/user"
 	"path/filepath"
 	"plugin"
+
+	"github.com/rsjethani/sysinfo/builtins"
+	"github.com/rsjethani/sysinfo/interfaces"
 )
 
 const configDir = ".sysinfo"
 
 var pluginDir = filepath.Join(configDir, "plugins")
 
-func initPlugin(category string, name string) (InfoProvider, error) {
+func loadExternalPlugin(category string, name string) (func() (interfaces.InfoProvider, error), error) {
 	u, err := user.Current()
 	if err != nil {
 		return nil, fmt.Errorf("Error while locating plugins: %v", err)
@@ -34,15 +37,34 @@ func initPlugin(category string, name string) (InfoProvider, error) {
 		return nil, fmt.Errorf("Error while looking up 'Init()' in plugin '%v': %v", name, err)
 	}
 
-	provider, err := init.(func() (InfoProvider, error))()
+	initFunc, ok := init.(func() (interfaces.InfoProvider, error))
+	if !ok {
+		return nil, fmt.Errorf("Error while parsing '%v' plugin's Init(), bad function signature. Required signature: %T", name, initFunc)
+	}
+
+	return initFunc, nil
+}
+
+func initPlugin(category string, name string) (interfaces.InfoProvider, error) {
+	initFunc, ok := builtins.BuiltinPlugins[name]
+	// If not a builtin plugin, try finding and loading an external plugin
+	if !ok {
+		f, err := loadExternalPlugin(category, name)
+		if err != nil {
+			return nil, err
+		}
+		initFunc = f
+	}
+	provider, err := initFunc()
 	if err != nil {
 		return nil, fmt.Errorf("Error while initializing plugin '%v': %v", name, err)
 	}
 
 	return provider, nil
+
 }
 
-func HwInfo(name string) (InfoProvider, error) {
+func HwInfo(name string) (interfaces.InfoProvider, error) {
 	provider, err := initPlugin("hardware", name)
 	if err != nil {
 		return nil, fmt.Errorf("Cannot get information about '%v': %v", name, err)
@@ -50,7 +72,7 @@ func HwInfo(name string) (InfoProvider, error) {
 	return provider, nil
 }
 
-func SwInfo(name string) (InfoProvider, error) {
+func SwInfo(name string) (interfaces.InfoProvider, error) {
 	provider, err := initPlugin("software", name)
 	if err != nil {
 		return nil, fmt.Errorf("Cannot get information about '%v': %v", name, err)

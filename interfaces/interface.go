@@ -1,4 +1,4 @@
-package sysinfo
+package  interfaces
 
 type InfoProvider interface {
 	Type() string
